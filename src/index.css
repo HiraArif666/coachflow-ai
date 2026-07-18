@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #F4FAF7;
+  --color-ink: #123832;
+  --color-ink-soft: #5B6B67;
+  --color-teal: #146356;
+  --color-teal-dark: #0D4A40;
+  --color-mint: #5FCFA0;
+  --color-seafoam: #A9E4CD;
+  --color-seafoam-pale: #E4F5EE;
+  --color-warn: #C9762F;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
