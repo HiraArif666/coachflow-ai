@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root {
+@theme {
   --color-bg: #F4FAF7;
   --color-ink: #123832;
   --color-ink-soft: #5B6B67;
@@ -16,7 +16,7 @@
 }
 
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-body);
 }
