@@ -14,4 +14,4 @@ export async function triggerN8nWorkflow(payload) {
   } catch (err) {
     console.error('Failed to trigger n8n workflow:', err)
   }
-}o
+}
