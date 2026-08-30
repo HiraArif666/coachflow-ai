@@ -18,6 +18,7 @@ export default function ChatWidget({ open, onClose }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: "Hi! I'm here to help you learn about our coaching programs. What brings you here today?" },
   ])
+  const [booked, setBooked] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [leadFields, setLeadFields] = useState(emptyFields)
@@ -29,9 +30,9 @@ export default function ChatWidget({ open, onClose }) {
   const [handoffNotified, setHandoffNotified] = useState(false)
   const [listening, setListening] = useState(false)
   const [voiceSupported] = useState(() => {
-  if (typeof window === 'undefined') return false
-  return !!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
-})
+    if (typeof window === 'undefined') return false
+    return !!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+  })
   const recognizerRef = useRef(null)
 
   function handleMicClick() {
@@ -58,6 +59,17 @@ export default function ChatWidget({ open, onClose }) {
     recognizer.onend = () => setListening(false)
     recognizer.start()
     setListening(true)
+  }
+
+  function handleBookingSuccess() {
+    setBooked(true)
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: '🎉 Your discovery call has been successfully scheduled! We look forward to meeting with you.',
+      },
+    ])
   }
 
   async function handleSend() {
@@ -147,8 +159,10 @@ export default function ChatWidget({ open, onClose }) {
 
       {showBooking ? (
         <div className="flex-1 overflow-y-auto flex flex-col">
-          <div className="px-4 py-3 border-b border-[var(--color-seafoam)] flex items-center justify-between">
-            <span className="text-sm font-medium text-[var(--color-ink)]">Book your discovery call</span>
+          <div className="px-4 py-3 border-b border-[var(--color-seafoam)] flex items-center justify-between shrink-0">
+            <span className="text-sm font-medium text-[var(--color-ink)]">
+              {booked ? 'Call Scheduled' : 'Book your discovery call'}
+            </span>
             <button
               onClick={() => setShowBooking(false)}
               className="text-xs text-[var(--color-teal)] hover:underline"
@@ -156,7 +170,29 @@ export default function ChatWidget({ open, onClose }) {
               ← Back to chat
             </button>
           </div>
-          <CalendlyEmbed prefillName={leadFields.full_name} prefillEmail={leadFields.email} />
+
+          {booked ? (
+            <div className="p-6 text-center space-y-3 my-auto">
+              <div className="text-4xl">📅</div>
+              <h3 className="font-semibold text-base text-[var(--color-ink)]">You're on the schedule!</h3>
+              <p className="text-xs text-[var(--color-ink-soft)] leading-relaxed">
+                A calendar invitation and confirmation details have been sent to{' '}
+                <strong>{leadFields.email || 'your email'}</strong>.
+              </p>
+              <button
+                onClick={() => setShowBooking(false)}
+                className="mt-4 bg-[var(--color-teal)] text-white text-xs px-5 py-2 rounded-full font-medium hover:brightness-95 transition-all"
+              >
+                Return to Chat
+              </button>
+            </div>
+          ) : (
+            <CalendlyEmbed
+              prefillName={leadFields.full_name}
+              prefillEmail={leadFields.email}
+              onScheduled={handleBookingSuccess}
+            />
+          )}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -177,10 +213,10 @@ export default function ChatWidget({ open, onClose }) {
               typing...
             </div>
           )}
-          {canBook && (
+          {canBook && !booked && (
             <button
               onClick={() => setShowBooking(true)}
-              className="bg-[var(--color-mint)] text-[var(--color-ink)] font-medium text-sm px-4 py-2 rounded-full hover:brightness-95 mx-auto block"
+              className="bg-[var(--color-mint)] text-[var(--color-ink)] font-medium text-sm px-4 py-2 rounded-full hover:brightness-95 mx-auto block shadow-sm"
             >
               📅 Book a discovery call
             </button>
@@ -188,14 +224,15 @@ export default function ChatWidget({ open, onClose }) {
         </div>
       )}
 
-      <div className="px-4 py-2 border-t border-[var(--color-seafoam)] text-xs text-[var(--color-ink-soft)] bg-[var(--color-seafoam-pale)]/50 flex flex-wrap gap-x-3 gap-y-1">
+      <div className="px-4 py-2 border-t border-[var(--color-seafoam)] text-xs text-[var(--color-ink-soft)] bg-[var(--color-seafoam-pale)]/50 flex flex-wrap gap-x-3 gap-y-1 shrink-0">
         <span>Score: {score} · Status: <strong className="uppercase">{status}</strong></span>
         <span className={sentimentColor}>Sentiment: <strong className="capitalize">{sentiment}</strong></span>
         {handoff && <span className="text-[var(--color-warn)]">· Handoff requested</span>}
+        {booked && <span className="text-[var(--color-mint)]">· Booked</span>}
       </div>
 
       {!showBooking && (
-        <div className="border-t border-[var(--color-seafoam)] p-3 flex gap-2">
+        <div className="border-t border-[var(--color-seafoam)] p-3 flex gap-2 shrink-0">
           {voiceSupported && (
             <button
               onClick={handleMicClick}

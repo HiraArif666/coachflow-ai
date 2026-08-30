@@ -1,22 +1,27 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
-export default function CalendlyEmbed({ prefillName, prefillEmail }) {
-  const containerRef = useRef(null)
-
+export default function CalendlyEmbed({ prefillName, prefillEmail, onScheduled }) {
   useEffect(() => {
-    if (!window.Calendly || !containerRef.current) return
+    function handleCalendlyEvent(e) {
+      if (e.data.event === 'calendly.event_scheduled') {
+        if (onScheduled) onScheduled(e.data.payload)
+      }
+    }
 
-    containerRef.current.innerHTML = ''
+    window.addEventListener('message', handleCalendlyEvent)
+    return () => window.removeEventListener('message', handleCalendlyEvent)
+  }, [onScheduled])
 
-    window.Calendly.initInlineWidget({
-      url: import.meta.env.VITE_CALENDLY_URL,
-      parentElement: containerRef.current,
-      prefill: {
-        name: prefillName || '',
-        email: prefillEmail || '',
-      },
-    })
-  }, [prefillName, prefillEmail])
+  // Replace with your actual Calendly URL
+  const calendlyUrl = `https://calendly.com/your-handle/discovery-call?name=${encodeURIComponent(
+    prefillName || ''
+  )}&email=${encodeURIComponent(prefillEmail || '')}`
 
-  return <div ref={containerRef} style={{ minWidth: '280px', height: '480px' }} />
+  return (
+    <iframe
+      src={calendlyUrl}
+      className="w-full h-full border-0 rounded-b-2xl"
+      title="Book a discovery call"
+    />
+  )
 }
