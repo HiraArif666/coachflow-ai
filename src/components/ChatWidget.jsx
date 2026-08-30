@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Mic, MicOff } from 'lucide-react'
 import { askGemini } from '../lib/gemini'
 import { scoreLead } from '../lib/scoring'
 import { saveLead } from '../lib/supabaseClient'
-import { triggerEmailWorkflow } from '../lib/n8n'
+import { triggerN8nWorkflow } from '../lib/n8n'
+import { createSpeechRecognizer } from '../lib/speechRecognition'
 import CalendlyEmbed from './CalendlyEmbed'
 
 const emptyFields = {
@@ -24,6 +26,36 @@ export default function ChatWidget({ open, onClose }) {
   const [leadId, setLeadId] = useState(null)
   const [showBooking, setShowBooking] = useState(false)
   const [emailTriggered, setEmailTriggered] = useState(false)
+  const [handoffNotified, setHandoffNotified] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [voiceSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
+  const recognizerRef = useRef(null)
+
+  function handleMicClick() {
+    if (listening) {
+      recognizerRef.current?.stop()
+      setListening(false)
+      return
+    }
+
+    const recognizer = createSpeechRecognizer(
+      (transcript) => {
+        setInput((prev) => (prev ? prev + ' ' + transcript : transcript))
+        setListening(false)
+      },
+      (error) => {
+        console.error('Speech recognition error:', error)
+        setListening(false)
+      }
+    )
+
+    if (!recognizer) return
+
+    recognizerRef.current = recognizer
+    recognizer.onend = () => setListening(false)
+    recognizer.start()
+    setListening(true)
+  }
 
   async function handleSend() {
     if (!input.trim() || loading) return
@@ -50,8 +82,9 @@ export default function ChatWidget({ open, onClose }) {
       const finalMessages = [...updatedMessages, { role: 'assistant', content: result.reply }]
       setMessages(finalMessages)
 
+      const { score, status } = scoreLead(mergedFields)
+
       if (mergedFields.email || mergedFields.phone) {
-        const { score, status } = scoreLead(mergedFields)
         const summary = finalMessages.map((m) => `${m.role}: ${m.content}`).join('\n')
         const newId = await saveLead(
           leadId,
@@ -66,12 +99,23 @@ export default function ChatWidget({ open, onClose }) {
 
         if (!emailTriggered && mergedFields.email) {
           setEmailTriggered(true)
-          triggerEmailWorkflow({
+          triggerN8nWorkflow({
             full_name: mergedFields.full_name || 'there',
             email: mergedFields.email,
             lead_status: status,
+            handoff_requested: false,
           })
         }
+      }
+
+      if (isHandoff && !handoffNotified) {
+        setHandoffNotified(true)
+        triggerN8nWorkflow({
+          full_name: mergedFields.full_name || 'Unknown visitor',
+          email: mergedFields.email || '',
+          lead_status: status,
+          handoff_requested: true,
+        })
       }
     } catch (err) {
       setMessages((prev) => [...prev, { role: 'assistant', content: "Sorry, I'm having trouble responding right now. Please try again." }])
@@ -149,18 +193,31 @@ export default function ChatWidget({ open, onClose }) {
 
       {!showBooking && (
         <div className="border-t border-[var(--color-seafoam)] p-3 flex gap-2">
+          {voiceSupported && (
+            <button
+              onClick={handleMicClick}
+              title={listening ? 'Stop listening' : 'Speak your message'}
+              className={`rounded-full w-10 h-10 flex items-center justify-center shrink-0 ${
+                listening
+                  ? 'bg-[var(--color-warn)] text-white animate-pulse'
+                  : 'bg-[var(--color-seafoam-pale)] text-[var(--color-teal)] hover:bg-[var(--color-seafoam)]'
+              }`}
+            >
+              {listening ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
+          )}
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type a message..."
+            placeholder={listening ? 'Listening...' : 'Type a message...'}
             disabled={loading}
-            className="flex-1 border border-[var(--color-seafoam)] rounded-full px-4 py-2 text-sm outline-none focus:border-[var(--color-teal)] disabled:opacity-50"
+            className="flex-1 border border-[var(--color-seafoam)] rounded-full px-4 py-2 text-sm outline-none focus:border-[var(--color-teal)] disabled:opacity-50 min-w-0"
           />
           <button
             onClick={handleSend}
             disabled={loading}
-            className="bg-[var(--color-teal)] text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-[var(--color-teal-dark)] disabled:opacity-50"
+            className="bg-[var(--color-teal)] text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-[var(--color-teal-dark)] disabled:opacity-50 shrink-0"
           >
             →
           </button>
