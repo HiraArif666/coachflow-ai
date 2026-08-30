@@ -31,7 +31,7 @@ You MUST respond with ONLY valid JSON, no other text, in exactly this shape:
 
 The "reply" field must always be a plain text string — never a nested object. Only fill in extracted_fields the visitor has actually told you in THIS message or previous messages. Leave everything else null. Never invent information.`
 
-export async function askGemini(conversationHistory) {
+export async function askGroq(conversationHistory) {
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     ...conversationHistory.map((m) => ({ role: m.role, content: m.content })),

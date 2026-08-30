@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Mic, MicOff } from 'lucide-react'
-import { askGemini } from '../lib/gemini'
+import { askGroq } from '../lib/groq'
 import { scoreLead } from '../lib/scoring'
 import { saveLead } from '../lib/supabaseClient'
 import { triggerN8nWorkflow } from '../lib/n8n'
@@ -28,7 +28,10 @@ export default function ChatWidget({ open, onClose }) {
   const [emailTriggered, setEmailTriggered] = useState(false)
   const [handoffNotified, setHandoffNotified] = useState(false)
   const [listening, setListening] = useState(false)
-  const [voiceSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition))
+  const [voiceSupported] = useState(() => {
+  if (typeof window === 'undefined') return false
+  return !!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+})
   const recognizerRef = useRef(null)
 
   function handleMicClick() {
@@ -67,7 +70,7 @@ export default function ChatWidget({ open, onClose }) {
     setLoading(true)
 
     try {
-      const result = await askGemini(updatedMessages)
+      const result = await askGroq(updatedMessages)
 
       const mergedFields = { ...leadFields }
       for (const key in result.extracted_fields) {
