@@ -44,7 +44,7 @@ export async function askGroq(conversationHistory) {
       Authorization: `Bearer ${GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
+      model: 'openai/gpt-oss-120b', // Updated to active model ID
       messages,
       response_format: { type: 'json_object' },
     }),
@@ -59,7 +59,7 @@ export async function askGroq(conversationHistory) {
   const raw = data.choices?.[0]?.message?.content ?? '{}'
   const parsed = JSON.parse(raw)
 
-  // Defensive normalization — Groq occasionally nests reply as { text: "..." } instead of a plain string
+  // Defensive normalization checks...
   if (parsed.reply && typeof parsed.reply === 'object') {
     parsed.reply = parsed.reply.text ?? JSON.stringify(parsed.reply)
   }
@@ -67,12 +67,10 @@ export async function askGroq(conversationHistory) {
     parsed.reply = String(parsed.reply ?? "Sorry, I didn't quite catch that — could you rephrase?")
   }
 
-  // Defensive fallback for extracted_fields in case Groq omits it entirely
   if (!parsed.extracted_fields || typeof parsed.extracted_fields !== 'object') {
     parsed.extracted_fields = {}
   }
 
-  // Defensive fallback for sentiment
   if (!['positive', 'neutral', 'negative'].includes(parsed.sentiment)) {
     parsed.sentiment = 'neutral'
   }
